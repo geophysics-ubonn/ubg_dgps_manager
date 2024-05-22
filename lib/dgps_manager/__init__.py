@@ -1,0 +1,4 @@
+from dgps_manager.manager import geojson_from_zip_selector
+
+geojson_from_zip_selector
+geojson_from_zip_selector
