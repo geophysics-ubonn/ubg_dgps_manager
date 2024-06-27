@@ -949,6 +949,10 @@ class gui(object):
         display(self.gui)
 
     def plot_utm_to_map(self):
+        coords = self.utm_coords.copy()
+        # only use active electrodes
+        coords = coords[np.where(self.utm_active_indices), :]
+
         imagery = OSM(
             cache=True,
         )
@@ -964,19 +968,19 @@ class gui(object):
 
         # try to find some sane extents based on the loaded data points
         # longitude (east-west, x-axis)
-        xmin = self.utm_coords[:, 0].min()
-        xmax = self.utm_coords[:, 0].max()
+        xmin = coords[:, 0].min()
+        xmax = coords[:, 0].max()
         xdiff = xmax - xmin
 
-        ymin = self.utm_coords[:, 1].min()
-        ymax = self.utm_coords[:, 1].max()
+        ymin = coords[:, 1].min()
+        ymax = coords[:, 1].max()
         ydiff = ymax - ymin
 
         extent = [
-            self.utm_coords[:, 0].min() - xdiff / 2,
-            self.utm_coords[:, 0].max() + xdiff / 2,
-            self.utm_coords[:, 1].min() - ydiff / 2,
-            self.utm_coords[:, 1].max() + ydiff / 2,
+            coords[:, 0].min() - xdiff / 2,
+            coords[:, 0].max() + xdiff / 2,
+            coords[:, 1].min() - ydiff / 2,
+            coords[:, 1].max() + ydiff / 2,
         ]
 
         ax.set_extent(extent, utm_projection)
@@ -1026,10 +1030,15 @@ class gui(object):
 
     def plot_utm_topography(self, relative=False):
         coords = self.utm_coords.copy()
+        # only use active electrodes
+        coords = coords[np.where(self.utm_active_indices)[0], :]
+
         if relative:
             for i in range(3):
                 coords[:, i] -= coords[:, i].min()
-        xy_distances = self.xy_distances_rel
+        xy_distances = self.xy_distances_rel[
+                np.where(self.utm_active_indices)[0]
+        ]
 
         fig, axes = plt.subplots(1, 2)
         ax = axes[0]
