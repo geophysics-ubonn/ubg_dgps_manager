@@ -355,6 +355,9 @@ class gui(object):
         # required
         self.utm_coords = None
         self.utm_active_indices = None
+        # holds the distances between active electrodes
+        self.utm_active_distances_rel = None
+        self.utm_active_distances_to_first = None
 
         self.el_manager = None
 
@@ -498,9 +501,9 @@ class gui(object):
                 north_lat_degree=lat_max,
             ),
         )
-        print('CODE', utm_crs_list[0].code)
+        # print('CODE', utm_crs_list[0].code)
         self.utm_crs = CRS.from_epsg(utm_crs_list[0].code)
-        print(self.utm_crs.to_wkt(pretty=True))
+        # print(self.utm_crs.to_wkt(pretty=True))
 
         # From SW Maps Homepage: All data recorded and exported by SW Maps is
         # in the WGS84 geographic
@@ -534,6 +537,23 @@ class gui(object):
         ))
         print('Distances:')
         print(self.xy_distances_rel)
+
+        # now do the some, but only use active electrodes
+        active_indices = np.where(self.utm_active_indices)[0]
+        coords = self.utm_coords[active_indices].copy()
+        self.utm_active_distances_to_first = np.hstack((
+            np.sqrt(
+                (coords[:, 0] - coords[0, 0]) ** 2 +
+                (coords[:, 1] - coords[0, 1]) ** 2
+            )
+        ))
+        self.utm_active_distances_rel = np.hstack((
+            0,
+            np.sqrt(
+                (coords[1:, 0] - coords[0:-1, 0]) ** 2 +
+                (coords[1:, 1] - coords[0:-1, 1]) ** 2
+            )
+        ))
 
     def _to_utm(self, force_utm_conversion=False, keep_active_states=False):
         """
@@ -665,6 +685,7 @@ class gui(object):
         print(self.utm_coords)
         for index, point in enumerate(self.utm_coords):
             label_nr = widgets.Label('')
+            label_nr_rev = widgets.Label('')
             label_x = widgets.Label('')
             label_y = widgets.Label('')
             label_z = widgets.Label('')
@@ -692,31 +713,53 @@ class gui(object):
                 )
             )
 
+            button_enable_all_before = widgets.Button(
+                description='enable all before'
+            )
+            button_enable_all_before.on_click(
+                lambda button, eindex=index: self.enable_all_before(
+                    eindex, button
+                )
+            )
+            button_enable_all_after = widgets.Button(
+                description='enable all after'
+            )
+            button_enable_all_before.on_click(
+                lambda button, eindex=index: self.enable_all_after(
+                    eindex, button
+                )
+            )
+
             items = [
                 # 0
                 label_nr,
                 # 1
-                label_x,
+                label_nr_rev,
                 # 2
-                label_y,
+                label_x,
                 # 3
-                label_z,
+                label_y,
                 # 4
-                label_dist_prev,
+                label_z,
                 # 5
-                label_dist_first,
+                label_dist_prev,
                 # 6
-                checkbox,
+                label_dist_first,
                 # 7
+                checkbox,
+                # 8
                 button1,
-                button2
+                button2,
+                button_enable_all_before,
+                button_enable_all_after,
             ]
             self.point_widgets += items
 
-        print('done creating the widgets')
+        # print('done creating the widgets')
 
         self.xyz_header = [
             widgets.HTML('<b>El-Nr (1:)</b>'),
+            widgets.HTML('<b>El-Nr Rev (1:)</b>'),
             widgets.HTML('<b>x [m]</b>'),
             widgets.HTML('<b>y [m]</b>'),
             widgets.HTML('<b>z [m]</b>'),
@@ -725,11 +768,11 @@ class gui(object):
             widgets.HTML(' '),
             widgets.HTML(' '),
             widgets.HTML(' '),
+            widgets.HTML(' '),
+            widgets.HTML(' '),
         ]
         # check just to make sure we added all headers
-        print('pre check 1')
         assert len(self.xyz_header) == len(items), 'Not enough header items'
-        print('post check 1')
 
         self.gridbox_xyz_points = GridBox(
             children=self.xyz_header + self.point_widgets,
@@ -738,6 +781,8 @@ class gui(object):
                 grid_template_columns=' '.join((
                     # label:nr
                     '70px',
+                    # label:nr:rev
+                    '90px',
                     # label:x
                     '70px',
                     # label:y
@@ -754,15 +799,24 @@ class gui(object):
                     '100px',
                     # button: ignore all after
                     '100px',
+                    # button: enable all before
+                    '100px',
+                    # button: enable all after
+                    '100px',
                 )),
                 # grid_template_rows='80px auto 80px',
                 # grid_gap='5px 10px'
             )
         )
-        print('done creating')
-        # vbox = widgets.VBox(self.point_widgets)
         with self.widgets['output_utm_points']:
             display(self.gridbox_xyz_points)
+
+    def _async_plot_map_topography(self, outwidget):
+        outwidget.clear_output()
+        with outwidget:
+            with plt.ioff():
+                fig, ax = self.plot_utm_topography(relative=True)
+            display(fig)
 
     def _update_map_xy_widgets(self):
         self._recompute_utm_distances()
@@ -777,59 +831,90 @@ class gui(object):
                 fig, ax = self.plot_utm_to_map()
             display(fig)
         """
-
-        self.widgets['output2'].clear_output()
-        with self.widgets['output2']:
-            with plt.ioff():
-                fig, ax = self.plot_utm_topography(relative=True)
-            display(fig)
+        # It seems there are still some issues with using threads here
+        # https://github.com/voila-dashboards/voila/issues/1341
+        # https://github.com/jupyter-widgets/ipywidgets/pull/3759
+        # thread = threading.Thread(
+        #     target=self._async_plot_map_topography,
+        #     args=[
+        #         self.widgets['output2']
+        #     ]
+        # )
+        # thread.start()
+        # for now, call it syncronously
+        self._async_plot_map_topography(self.widgets['output2'])
 
         # show table with utm-datapoints
 
         mean_electrode_distance = np.mean(self.xy_distances_rel)
+
+        nr_active_electrodes = 0
+        for index, point in enumerate(self.utm_coords):
+            if self.utm_active_indices[index]:
+                nr_active_electrodes += 1
 
         el_nr = 1
         # self.point_widgets = []
         for index, point in enumerate(self.utm_coords):
             nr_i = len(self.xyz_header)
             items = self.point_widgets[index * nr_i: (index + 1) * nr_i]
+
+            # compute the electrode number based on the active electrodes
             if self.utm_active_indices[index]:
                 el_label = '{}'.format(el_nr)
+                el_label_rev = '{}'.format(nr_active_electrodes - el_nr + 1)
+
+                # shortcuts
+                dist_rel = self.utm_active_distances_rel
+                dist_first = self.utm_active_distances_to_first
+                # relative distance
+                items[5].value = '{:.2f}'.format(
+                    dist_rel[el_nr - 1],
+                )
+
+                if index > 0 and dist_rel[el_nr - 1] <= 0.15:
+                    items[5].style.background = 'red'
+                elif index > 0 and dist_rel[
+                        el_nr - 1] <= mean_electrode_distance / 3:
+                    items[5].style.background = 'orange'
+                else:
+                    items[5].style.background = 'white'
+                items[6].value = '{:.2f}'.format(
+                    dist_first[el_nr - 1]
+                )
+
                 el_nr += 1
             else:
                 el_label = '-'
+                el_label_rev = '-'
+                items[5].value = '-'
+                items[6].value = '-'
+
             # nr:
             items[0].value = el_label
+            # nr-reversed
+            items[1].value = el_label_rev
 
-            items[1].value = '{:.2f}'.format(point[0])
-            items[2].value = '{:.2f}'.format(point[1])
-            items[3].value = '{:.2f}'.format(point[2])
-            items[4].value = '{:.2f}'.format(self.xy_distances_rel[index])
-            if index > 0 and self.xy_distances_rel[index] <= 0.15:
-                items[4].style.background = 'red'
-            elif index > 0 and self.xy_distances_rel[
-                    index] <= mean_electrode_distance / 3:
-                items[4].style.background = 'orange'
-            else:
-                items[4].style.background = 'white'
-            items[5].value = '{:.2f}'.format(self.xy_distances_to_first[index])
+            items[2].value = '{:.2f}'.format(point[0])
+            items[3].value = '{:.2f}'.format(point[1])
+            items[4].value = '{:.2f}'.format(point[2])
 
-            items[6].unobserve_all()
+            items[7].unobserve_all()
             if self.utm_active_indices[index] == 0:
                 # disable this line
                 for item in items:
                     item.disabled = True
 
                 # disable checkbox
-                items[6].value = 0
-                items[6].disabled = False
+                items[7].value = 0
+                items[7].disabled = False
             else:
                 for item in items:
                     item.disabled = False
-                items[6].value = 1
-                items[6].disabled = False
+                items[7].value = 1
+                items[7].disabled = False
 
-            items[6].observe(
+            items[7].observe(
                 lambda change, eindex=index: self.set_status_use_as_electrode(
                     eindex, change
                 ),
@@ -880,20 +965,32 @@ class gui(object):
         # print(self.utm_coords)
         self._update_map_xy_widgets()
 
+    def enable_all_before(self, eindex, button):
+        print('Enabling all electrodes before', eindex)
+        for i in range(0, eindex):
+            self.utm_active_indices[i] = 1
+        self._update_map_xy_widgets()
+
     def ignore_all_before(self, eindex, button):
-        print('Ignoring all electrodes all before', eindex)
+        print('Ignoring all electrodes before', eindex)
         for i in range(0, eindex):
             self.utm_active_indices[i] = 0
         self._update_map_xy_widgets()
 
+    def enable_all_after(self, eindex, button):
+        print('Enabling all electrodes after', eindex)
+        for i in range(eindex + 1, len(self.utm_active_indices)):
+            self.utm_active_indices[i] = 1
+        self._update_map_xy_widgets()
+
     def ignore_all_after(self, eindex, button):
-        print('Ignoring all electrodes all before', eindex)
+        print('Ignoring all electrodes after', eindex)
         for i in range(eindex + 1, len(self.utm_active_indices)):
             self.utm_active_indices[i] = 0
         self._update_map_xy_widgets()
 
     def set_status_use_as_electrode(self, index, change):
-        print('xy widgets: set as active electrode')
+        # print('xy widgets: set as active electrode')
         self._clear_advanced_steps()
         self.utm_active_indices[index] = int(change['new'])
         self._update_map_xy_widgets()
