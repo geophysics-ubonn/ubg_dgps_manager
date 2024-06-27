@@ -535,7 +535,10 @@ class gui(object):
         print('Distances:')
         print(self.xy_distances_rel)
 
-    def _to_utm(self, force_utm_conversion=False):
+    def _to_utm(self, force_utm_conversion=False, keep_active_states=False):
+        """
+
+        """
         if not force_utm_conversion and self.utm_coords is not None:
             # work was already done
             return
@@ -546,8 +549,20 @@ class gui(object):
             utm_coords += [[utm_tmp[0], utm_tmp[1], point[2]], ]
 
         self.utm_coords = np.array(utm_coords)
-        # by default, activate all electrodes
-        self.utm_active_indices = np.ones(self.utm_coords.shape[0])
+
+        if self.utm_active_indices is not None and keep_active_states:
+            N_existing = self.utm_active_indices.shape[0]
+            N_required = self.utm_coords.shape[0]
+            if N_existing < N_required:
+                # add as many ones to the array as are missing
+                self.utm_active_indices = np.hstack((
+                    self.utm_active_indices,
+                    np.ones(N_required - N_existing),
+                ))
+                print(self.utm_active_indices.shape)
+        else:
+            # by default, activate all electrodes
+            self.utm_active_indices = np.ones(self.utm_coords.shape[0])
 
         self._recompute_utm_distances()
 
@@ -571,6 +586,16 @@ class gui(object):
         self.utm_active_indices = None
 
     def _add_to_gps_coords(self, new_wgs84_data, delete_prev_data):
+        """This function is called when we want to load new data
+
+        Parameters
+        ----------
+        new_wgs84_data: numpy.ndarray
+            Data that is added to the class
+        delete_prev_data: bool
+            If True, delete all existing data
+
+        """
         print('Add new WGS84 data')
         if delete_prev_data:
             print('Clearing previous data')
@@ -588,7 +613,7 @@ class gui(object):
         # clean up GUI elements dependent on the gps coordinates
         self._clear_advanced_steps()
 
-        self._to_utm(force_utm_conversion=True)
+        self._to_utm(force_utm_conversion=True, keep_active_states=True)
         self.point_widgets = None
         self._build_map_xy_widgets()
         self._update_map_xy_widgets()
