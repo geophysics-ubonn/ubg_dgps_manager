@@ -770,11 +770,13 @@ class gui(object):
         # update the GUI
         # Note: From here on we only work on the UTM coordinates
         #       self.utm_coords. We may modify this array
+        """
         self.widgets['output1'].clear_output()
         with self.widgets['output1']:
             with plt.ioff():
                 fig, ax = self.plot_utm_to_map()
             display(fig)
+        """
 
         self.widgets['output2'].clear_output()
         with self.widgets['output2']:
