@@ -796,13 +796,13 @@ class gui(object):
                     # checkbox use el
                     '130px',
                     # button: ignore all before
-                    '100px',
+                    '110px',
                     # button: ignore all after
-                    '100px',
+                    '110px',
                     # button: enable all before
-                    '100px',
+                    '110px',
                     # button: enable all after
-                    '100px',
+                    '110px',
                 )),
                 # grid_template_rows='80px auto 80px',
                 # grid_gap='5px 10px'
