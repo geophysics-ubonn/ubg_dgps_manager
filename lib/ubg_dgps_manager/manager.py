@@ -1163,7 +1163,7 @@ class gui(object):
         )
 
         imagery = OSM(
-            cache=False,
+            cache=True,
         )
         fig = plt.figure(figsize=(20, 20))
         ax = fig.add_subplot(
