@@ -1,19 +1,33 @@
+import logging
+
 import numpy as np
 import ipywidgets as widgets
 from ipywidgets import GridBox, Layout
 import matplotlib.pyplot as plt
 from IPython.display import display
 
+from .log_helper import ListHandler
+
 
 class electrode_manager(object):
     def __init__(self, electrode_positions, output=None):
+        self.log = logging.Logger(
+            name='electrode_manager',
+            level=logging.INFO,
+        )
+        self.log_handler = ListHandler()
+        self.log.addHandler(self.log_handler)
+        self.log.info("Remember: Electrode indices start at 0!")
+
         self.el_coords_orig = electrode_positions
         self.electrode_positions = np.hstack((
             self.el_coords_orig[:, :],
             np.ones(electrode_positions.shape[0])[:, np.newaxis],
         ))
-        # debug
-        # self.electrode_positions[1, 3] = 0
+
+        self.log.info(
+            'Got {} electrodes'.format(self.electrode_positions.shape[0])
+        )
         self.vbox = None
 
         self.widgets = {}
@@ -24,6 +38,11 @@ class electrode_manager(object):
     def set_status_use_as_electrode(self, index, change):
         self.electrode_positions[index, 3] = int(change['new'])
         self._update_widgets()
+        self.log.info(
+            'Changing active-status of electrode index {} to {}'.format(
+                index, change['new']
+            )
+        )
 
     def _build_widgets(self):
         el_widgets = []
@@ -68,6 +87,15 @@ class electrode_manager(object):
         self.widgets['output_print'] = widgets.Output()
         self.widgets['button_print'].on_click(
             self.print_electrode_coordinates
+        )
+
+        self.widgets['button_show_log'] = widgets.Button(
+            description='Show LOG',
+            disabled=False,
+        )
+        self.widgets['output_log'] = widgets.Output()
+        self.widgets['button_show_log'].on_click(
+            self.print_log
         )
 
         self.widgets['output_points'] = widgets.Output()
@@ -145,6 +173,8 @@ class electrode_manager(object):
             self.widgets['output_points'],
             self.widgets['button_print'],
             self.widgets['output_print'],
+            self.widgets['button_show_log'],
+            self.widgets['output_log'],
         ])
         self.vbox = vbox
         self._update_widgets()
@@ -155,6 +185,11 @@ class electrode_manager(object):
             self.widgets['int_interp_from'].value,
             self.widgets['int_interp_to'].value,
         ])
+        self.log.info(
+            'Linear interpolation between electrode indices {} and {}'.format(
+                *el_ids
+            )
+        )
         print('Electrode ids:', el_ids)
         if el_ids[1] - el_ids[0] < 2:
             print('Returning')
@@ -185,6 +220,10 @@ class electrode_manager(object):
         self.electrode_positions[replace_ids, 2] = z_new
 
         self._update_widgets()
+
+    def print_log(self, button):
+        with self.widgets['output_log']:
+            print(self.log_handler.get_str_formatting())
 
     def print_electrode_coordinates(self, button):
         self.widgets['output_print'].clear_output()
@@ -260,6 +299,9 @@ class electrode_manager(object):
 
     def move_down(self, button, index):
         print('Moving down {} -> {}'.format(index, index + 1))
+        self.log.info(
+            'Moving electrode down {} -> {}'.format(index, index + 1)
+        )
         new_position = index + 1
         if new_position >= self.electrode_positions.shape[0]:
             print('doing nothing')
@@ -275,6 +317,9 @@ class electrode_manager(object):
 
     def move_up(self, button, index):
         print('Moving up {} -> {}'.format(index, index - 1))
+        self.log.info(
+            'Moving electrode up {} -> {}'.format(index, index + 1)
+        )
         new_position = index - 1
         if new_position < 0:
             print('doing nothing')

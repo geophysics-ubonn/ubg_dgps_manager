@@ -24,35 +24,10 @@ from IPython.display import display
 
 from .electrode_manager import electrode_manager
 from .crtomo_mesh_manager import crtomo_mesh_mgr
+from .log_helper import log_formatter
+from .log_helper import ListHandler
 
 mpl.rcParams['text.usetex'] = False
-
-
-log_formatter = logging.Formatter(
-    fmt='%(asctime)s %(name)s %(message)s',
-)
-
-
-class ListHandler(logging.Handler):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.loglist = []
-
-    def handle(self, record):
-        self.loglist += [record]
-        # print('Handling this record:', formatter.format(record))
-
-    def get_str_formatting(self, log_list=None):
-        if log_list is None:
-            list_to_use = self.loglist
-        else:
-            list_to_use = log_list
-
-        out_str = []
-
-        for record in list_to_use:
-            out_str += [log_formatter.format(record)]
-        return '\n'.join(out_str)
 
 
 class importer_leica_csv(object):
@@ -426,6 +401,7 @@ class gui(object):
         )
         self.log_handler = ListHandler()
         self.log.addHandler(self.log_handler)
+        self.log.info("Remember: Electrode indices start at 0!")
 
         self.widgets = {}
         self.filename = filename
@@ -507,7 +483,9 @@ class gui(object):
                 description='Show LOG',
                 disabled=False,
             ),
-            'output_log': widgets.Output(),
+            'output_log': widgets.Output(
+                layout={'border': '1px solid black'}
+            ),
             'but_show_gps_coordinates': widgets.Button(
                 description='Show GPS Coordinates',
                 disabled=True,
