@@ -5,7 +5,7 @@
 from setuptools import setup
 from setuptools import find_packages
 
-version_long = '0.1.1'
+version_long = '0.2.0'
 
 
 if __name__ == '__main__':
