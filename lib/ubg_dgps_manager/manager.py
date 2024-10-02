@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import numpy as np
+import logging
 import io
 import zipfile
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import ipywidgets as widgets
-
 from ipywidgets import GridBox, Layout
 
 import cartopy.crs as ccrs
@@ -28,6 +28,33 @@ from .crtomo_mesh_manager import crtomo_mesh_mgr
 mpl.rcParams['text.usetex'] = False
 
 
+log_formatter = logging.Formatter(
+    fmt='%(asctime)s %(name)s %(message)s',
+)
+
+
+class ListHandler(logging.Handler):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.loglist = []
+
+    def handle(self, record):
+        self.loglist += [record]
+        # print('Handling this record:', formatter.format(record))
+
+    def get_str_formatting(self, log_list=None):
+        if log_list is None:
+            list_to_use = self.loglist
+        else:
+            list_to_use = log_list
+
+        out_str = []
+
+        for record in list_to_use:
+            out_str += [log_formatter.format(record)]
+        return '\n'.join(out_str)
+
+
 class importer_leica_csv(object):
     """Provides means to import a .csv file exported by our Leica dGPS:
 
@@ -39,6 +66,13 @@ class importer_leica_csv(object):
         3;1;7.70925422148883;53.7804656675215;1.592;;0.072;
     """
     def __init__(self, callback_upload=None):
+        self.log = logging.Logger(
+            name='importer_leica_csv',
+            level=logging.INFO,
+        )
+        self.log_handler = ListHandler()
+        self.log.addHandler(self.log_handler)
+
         self.label = '.Leica CSV'
 
         # everything will be rendered in here
@@ -95,6 +129,13 @@ class importer_leica_csv(object):
             print('Error: Empty file')
             return
 
+        self.log.info(
+            'loading file {} (size: {} bytes)'.format(
+                upload[0]['name'],
+                upload[0]['size'],
+            )
+        )
+
         buffer = io.BytesIO(upload[0].content)
         self.buffer = buffer
 
@@ -115,8 +156,12 @@ class importer_leica_csv(object):
 
         self.wgs84_points = self.data[['X', 'Y', 'Z']].values
 
-        print(self.wgs84_points)
         delete_prev_data = self.widgets['check_delete_prev'].value
+        self.log.info(
+            'previous data will be erased: {}'.format(
+                delete_prev_data
+            )
+        )
 
         if self.callback_upload is not None:
             print('Calling callback:', self.callback_upload)
@@ -127,6 +172,12 @@ class importer_geojson(object):
     """Provides means to import a geojson file
     """
     def __init__(self, callback_upload=None):
+        self.log = logging.Logger(
+            name='importer_geojson',
+            level=logging.INFO,
+        )
+        self.log_handler = ListHandler()
+        self.log.addHandler(self.log_handler)
         self.label = '.GeoJSON'
 
         # everything will be rendered in here
@@ -182,6 +233,13 @@ class importer_geojson(object):
             print('Error: Empty file')
             return
 
+        self.log.info(
+            'loading file {} (size: {} bytes)'.format(
+                upload[0]['name'],
+                upload[0]['size'],
+            )
+        )
+
         buffer = io.BytesIO(upload[0].content)
         try:
             self.data_geojson = geojson.load(buffer)
@@ -197,8 +255,13 @@ class importer_geojson(object):
                 )
             )
         )
-        print(self.wgs84_points)
+
         delete_prev_data = self.widgets['check_delete_prev'].value
+        self.log.info(
+            'previous data will be erased: {}'.format(
+                delete_prev_data
+            )
+        )
 
         if self.callback_upload is not None:
             print('Calling callback:', self.callback_upload)
@@ -209,10 +272,20 @@ class importer_geojson_zip(object):
     """Provides means to import a geojson file from a .zip file
     """
     def __init__(self, callback_upload=None):
+        self.log = logging.Logger(
+            name='importer_geojson_zip',
+            level=logging.INFO,
+        )
+        self.log_handler = ListHandler()
+        self.log.addHandler(self.log_handler)
+
         self.label = '.GeoJSON ZIP'
 
         # everything will be rendered in here
         self.output = widgets.Output()
+
+        self.zfile = None
+        self.zinfo = None
 
         self.widgets = {}
 
@@ -231,7 +304,7 @@ class importer_geojson_zip(object):
                 multiple=False
             ),
             'gj_selector': widgets.RadioButtons(
-                description='.geojson file to load:',
+                description='Which .geojson file to load from .ZIP:',
                 disabled=False,
             ),
             'but_load_gjfile': widgets.Button(
@@ -285,13 +358,13 @@ class importer_geojson_zip(object):
 
     def _zip_uploaded(self, change):
         if change['name'] == 'value':
-            print(change['new'])
             cdict = change['new'][0]
             if cdict['type'] == 'application/zip' and cdict['size'] > 0:
                 # try to load this as a zip
                 self.zfile = zipfile.ZipFile(
                     io.BytesIO(cdict['content'])
                 )
+                self.zinfo = cdict
                 # print('done loading .zip file')
                 self._update_gui()
 
@@ -317,6 +390,15 @@ class importer_geojson_zip(object):
             print(e)
             return
 
+        index = self.widgets['gj_selector'].value
+        self.log.info(
+            'loading from file {} (size: {} bytes) the data file {}'.format(
+                self.zinfo['name'],
+                self.zinfo['size'],
+                self.widgets['gj_selector'].options[index][0]
+            )
+        )
+
         self.wgs84_points = np.array(
             list(
                 geojson.utils.coords(
@@ -325,6 +407,11 @@ class importer_geojson_zip(object):
             )
         )
         delete_prev_data = self.widgets['check_delete_prev'].value
+        self.log.info(
+            'previous data will be erased: {}'.format(
+                delete_prev_data
+            )
+        )
 
         if self.callback_upload is not None:
             print('Calling callback:', self.callback_upload)
@@ -333,6 +420,13 @@ class importer_geojson_zip(object):
 
 class gui(object):
     def __init__(self, filename=None):
+        self.log = logging.Logger(
+            name='dgps_import',
+            level=logging.INFO,
+        )
+        self.log_handler = ListHandler()
+        self.log.addHandler(self.log_handler)
+
         self.widgets = {}
         self.filename = filename
         if filename is not None:
@@ -399,13 +493,21 @@ class gui(object):
                 disabled=True,
             ),
             'help_el_manager': widgets.HTML(
-                value="<h2>Electrode manager</h2>" +
-                "This section is used to:<br />" +
-                "a) arange electrode order<br />" +
-                "b) adjust electrode heights (e.g., by interpolation)<br />",
+                value=''.join((
+                    "<h2>Electrode manager</h2>",
+                    "This section is used to:<br />",
+                    "a) arange electrode order<br />",
+                    "b) adjust electrode heights ",
+                    "(e.g., by interpolation)<br />",
+                )),
                 # placeholder='Some HTML',
                 # description='Some HTML',
             ),
+            'but_show_log': widgets.Button(
+                description='Show LOG',
+                disabled=False,
+            ),
+            'output_log': widgets.Output(),
             'but_show_gps_coordinates': widgets.Button(
                 description='Show GPS Coordinates',
                 disabled=True,
@@ -448,6 +550,8 @@ class gui(object):
                 self.widgets['but_reverse_electrodes'],
                 self.widgets['but_sort_dist_to_first'],
             ]),
+            self.widgets['but_show_log'],
+            self.widgets['output_log'],
             self.widgets['but_show_gps_coordinates'],
             self.widgets['output_gps_coords'],
             self.widgets['but_show_el_manager'],
@@ -461,6 +565,36 @@ class gui(object):
         self.widgets['but_show_gps_coordinates'].on_click(
             self.print_gps_coordinates
         )
+
+        self.widgets['but_show_log'].on_click(
+            self.print_log_to_widget
+        )
+
+    def get_activity_log_strlist(self):
+        """Collect log records from all importers and the gui (this object)
+        and return a temporally-sorted list of log strings.
+        """
+        # gather logs of the importers
+        logs_all_unsorted = []
+        for importer in self.importers.values():
+            logs_all_unsorted += importer.log_handler.loglist
+        # the gui logs
+        logs_all_unsorted += self.log_handler.loglist
+
+        # convert to strings
+        logs_str_unsorted = []
+        for record in logs_all_unsorted:
+            logs_str_unsorted += [log_formatter.format(record)]
+
+        return list(sorted(logs_str_unsorted))
+
+    def print_log_to_widget(self, button):
+        """Print the activity log into the corresponding output widget
+        """
+        activity_log = '\n'.join(self.get_activity_log_strlist())
+        self.widgets['output_log'].clear_output()
+        with self.widgets['output_log']:
+            print(activity_log)
 
     def print_gps_coordinates(self, button):
         """Print WGS84 Coordinates of the final points
@@ -535,8 +669,6 @@ class gui(object):
                 (coords[1:, 1] - coords[0:-1, 1]) ** 2
             )
         ))
-        print('Distances:')
-        print(self.xy_distances_rel)
 
         # now do the some, but only use active electrodes
         active_indices = np.where(self.utm_active_indices)[0]
@@ -618,7 +750,7 @@ class gui(object):
         """
         print('Add new WGS84 data')
         if delete_prev_data:
-            print('Clearing previous data')
+            self.log.info('Clearing previous data')
             self.clear_gps_coordinates()
 
         if self.wgs84_points is None:
@@ -628,7 +760,13 @@ class gui(object):
                 self.wgs84_points,
                 new_wgs84_data,
             ))
-            print('New number of data points:', self.wgs84_points.shape)
+        print('New number of data points:', self.wgs84_points.shape)
+        self.log.info(
+            'added {} data points, {} in total now'.format(
+                new_wgs84_data.shape[0],
+                self.wgs84_points.shape[0]
+            )
+        )
 
         # clean up GUI elements dependent on the gps coordinates
         self._clear_advanced_steps()
@@ -638,41 +776,10 @@ class gui(object):
         self._build_map_xy_widgets()
         self._update_map_xy_widgets()
 
-    def __load_gjfile(self, button):
-
-        # clean up GUI elements dependent on the gps coordinates
-        self._clear_advanced_steps()
-
-        # extract file into a buffer
-        finfo = self.gjfiles[self.widgets['gj_selector'].value]
-
-        # load primary data
-        buffer = io.BytesIO()
-        buffer.write(self.zfile.read(finfo))
-        buffer.seek(0)
-
-        self.data_gj = geojson.load(buffer)
-
-        self.wgs84_points = np.array(
-            list(
-                geojson.utils.coords(
-                    self.data_gj['features']
-                )
-            )
-        )
-        self._to_utm()
-
-        self.point_widgets = None
-        self._build_map_xy_widgets()
-        self._update_map_xy_widgets()
-
     def _build_map_xy_widgets(self):
         """Some widgets (namely, the utm table) need to be adapted to the
         number of data points. Those widgets are stored in self.point_widgets
         If that variable is None, then this function recreates those widgets.
-
-
-
         """
         if self.point_widgets is not None:
             # nothing to do
@@ -824,13 +931,13 @@ class gui(object):
         # update the GUI
         # Note: From here on we only work on the UTM coordinates
         #       self.utm_coords. We may modify this array
-        """
         self.widgets['output1'].clear_output()
         with self.widgets['output1']:
             with plt.ioff():
-                fig, ax = self.plot_utm_to_map()
-            display(fig)
-        """
+                pass
+                # fig, ax = self.plot_utm_to_map()
+            # display(fig)
+
         # It seems there are still some issues with using threads here
         # https://github.com/voila-dashboards/voila/issues/1341
         # https://github.com/jupyter-widgets/ipywidgets/pull/3759
@@ -947,6 +1054,9 @@ class gui(object):
         self.widgets['output_gps_coords'].clear_output()
 
     def sort_utm_dist_to_first(self, button):
+        self.log.info(
+            'Activity: Sorting with respect to first electrode distance'
+        )
         self._clear_advanced_steps()
 
         indices = np.argsort(self.xy_distances_to_first)
@@ -956,7 +1066,7 @@ class gui(object):
         self._update_map_xy_widgets()
 
     def reverse_electrode_order(self, button):
-        print('Reversing electrode positions:')
+        self.log.info('Activity: Reversing order of electrodes')
         # print('before')
         # print(self.utm_coords)
         self._clear_advanced_steps()
@@ -966,31 +1076,53 @@ class gui(object):
         self._update_map_xy_widgets()
 
     def enable_all_before(self, eindex, button):
-        print('Enabling all electrodes before', eindex)
+        self.log.info(
+            'Enabling all electrodes before index: {}'.format(
+                eindex
+            )
+        )
         for i in range(0, eindex):
             self.utm_active_indices[i] = 1
         self._update_map_xy_widgets()
 
     def ignore_all_before(self, eindex, button):
-        print('Ignoring all electrodes before', eindex)
+        self.log.info(
+            'Ignoring all electrodes before index: {}'.format(
+                eindex
+            )
+        )
         for i in range(0, eindex):
             self.utm_active_indices[i] = 0
         self._update_map_xy_widgets()
 
     def enable_all_after(self, eindex, button):
-        print('Enabling all electrodes after', eindex)
+        self.log.info(
+            'Enabling all electrodes after index: {}'.format(
+                eindex
+            )
+        )
         for i in range(eindex + 1, len(self.utm_active_indices)):
             self.utm_active_indices[i] = 1
         self._update_map_xy_widgets()
 
     def ignore_all_after(self, eindex, button):
         print('Ignoring all electrodes after', eindex)
+        self.log.info(
+            'Ignoring all electrodes after index: {}'.format(
+                eindex
+            )
+        )
         for i in range(eindex + 1, len(self.utm_active_indices)):
             self.utm_active_indices[i] = 0
         self._update_map_xy_widgets()
 
     def set_status_use_as_electrode(self, index, change):
         # print('xy widgets: set as active electrode')
+        self.log.info(
+            'Changing status of electrode {} to {}'.format(
+                index, change['new']
+            )
+        )
         self._clear_advanced_steps()
         self.utm_active_indices[index] = int(change['new'])
         self._update_map_xy_widgets()
@@ -1046,12 +1178,13 @@ class gui(object):
         display(self.gui)
 
     def plot_utm_to_map(self):
+        print('Mapping using OSM')
         coords = self.utm_coords.copy()
         # only use active electrodes
         coords = coords[np.where(self.utm_active_indices), :]
 
         imagery = OSM(
-            cache=True,
+            cache=False,
         )
         fig = plt.figure(figsize=(20, 20))
         ax = fig.add_subplot(
@@ -1123,6 +1256,7 @@ class gui(object):
         #     transform=ccrs.PlateCarree(),
         # )
 
+        print('Done mapping')
         return fig, ax
 
     def plot_utm_topography(self, relative=False):
