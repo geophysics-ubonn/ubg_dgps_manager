@@ -934,9 +934,8 @@ class gui(object):
         self.widgets['output1'].clear_output()
         with self.widgets['output1']:
             with plt.ioff():
-                pass
-                # fig, ax = self.plot_utm_to_map()
-            # display(fig)
+                fig, ax = self.plot_utm_to_map()
+            display(fig)
 
         # It seems there are still some issues with using threads here
         # https://github.com/voila-dashboards/voila/issues/1341
@@ -1178,10 +1177,12 @@ class gui(object):
         display(self.gui)
 
     def plot_utm_to_map(self):
-        print('Mapping using OSM')
         coords = self.utm_coords.copy()
+
         # only use active electrodes
-        coords = coords[np.where(self.utm_active_indices), :]
+        coords = np.atleast_2d(
+            coords[np.where(self.utm_active_indices), :].squeeze()
+        )
 
         imagery = OSM(
             cache=False,
@@ -1201,6 +1202,9 @@ class gui(object):
         xmin = coords[:, 0].min()
         xmax = coords[:, 0].max()
         xdiff = xmax - xmin
+
+        assert xmin > 0
+        assert xmax > 0
 
         ymin = coords[:, 1].min()
         ymax = coords[:, 1].max()
@@ -1256,7 +1260,6 @@ class gui(object):
         #     transform=ccrs.PlateCarree(),
         # )
 
-        print('Done mapping')
         return fig, ax
 
     def plot_utm_topography(self, relative=False):
