@@ -1,3 +1,15 @@
+"""The electrode_manager class takes 3D (gps) coordinates and produces 2D
+coordinates suitable for ERT/TDIP/EIT modelling/inversions.
+
+Correspondingly, it only deals in x-z coordinates
+
+Coordinates can be modified in various ways, see the code for details.
+An incomplete list:
+    * remove electrodes
+    * rearrange electrodes
+    * interpolate heights between two existing electrodes
+
+"""
 import logging
 
 import numpy as np
