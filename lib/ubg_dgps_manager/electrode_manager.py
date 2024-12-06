@@ -275,6 +275,15 @@ class electrode_manager(object):
         print('actives', actives)
         assert end_elec <= actives.size, 'end electrode too large'
 
+        self.log.info(
+            'Shifting electrodes {} to (including) {} by {} '.format(
+                start_elec,
+                end_elec,
+                z_change
+            ) +
+            'm on z-axis (electrode numbers are zero-indexed)'
+        )
+
         print(
             'Shifting electrodes from ' +
             '{} to (including) {} by {} m on z-axis'.format(
@@ -297,6 +306,11 @@ class electrode_manager(object):
                 new_x, new_z
             )
         )
+        self.log.info(
+            'Adding new electrode at the beginning at location ({}/{})'.format(
+                new_x, new_z
+            )
+        )
 
         self.electrode_positions = np.vstack((
             np.array((new_x, 0, new_z, 1))[np.newaxis, :],
@@ -313,6 +327,11 @@ class electrode_manager(object):
         new_z = self.add_elc_widgets[6].value
         print(
             'Adding new electrode with coordinates ({}/{}) at BACK'.format(
+                new_x, new_z
+            )
+        )
+        self.log.info(
+            'Adding new electrode at the end at location ({}/{})'.format(
                 new_x, new_z
             )
         )
@@ -333,34 +352,29 @@ class electrode_manager(object):
             print('ERROR: end electrode must be larger than start electrode')
             return
 
-        nr_electrodes = self.resample_widgets[4].value
-        if nr_electrodes <= 0:
+        req_spacing = self.resample_widgets[4].value
+        if req_spacing <= 0:
             print('ERROR: requested electrode spacing must be > 0 m!')
             return
 
+        self.log.info(
+            'Resampling points between elecs {} and {} (zero-indexed)'.format(
+                start_electrode, end_electrode
+            ) +
+            ' with a spacing of {} m'.format(
+                req_spacing
+            )
+        )
+
         el_ids = range(start_electrode, end_electrode + 1)
-        # def get_resampled_positions(data_x_raw, data_z_raw,
-        # requested_spacing):
         actives = np.where(self.electrode_positions[:, 3])
         active_els = self.electrode_positions[actives, 0:3].squeeze()
 
         data_x = active_els[el_ids, 0]
         data_z = active_els[el_ids, 2]
-        print('number of electrodes:', nr_electrodes)
         new_x, new_z, N = get_resampled_positions(
-            data_x, data_z, nr_electrodes
+            data_x, data_z, req_spacing
         )
-
-        print('data_x')
-        print(data_x)
-        print('data_z')
-        print(data_z)
-
-        print('new positions:')
-        print(new_x)
-        print(new_z)
-
-        print('----------_')
 
         # splice the new electrode in
         self.electrode_positions = np.vstack((
@@ -399,6 +413,7 @@ class electrode_manager(object):
             widgets.Label('_'),
             widgets.Label('x'),
             widgets.Label('z'),
+            widgets.Label('distance'),
             widgets.Button(description='Move down'),
             widgets.Button(description='Move up'),
             widgets.Checkbox(
@@ -417,12 +432,12 @@ class electrode_manager(object):
             # items = []
             items = self._get_electrode_widgets_row()
 
-            items[3].on_click(
-                lambda x, eindex=index: self.move_down(x, eindex))
             items[4].on_click(
+                lambda x, eindex=index: self.move_down(x, eindex))
+            items[5].on_click(
                 lambda x, eindex=index: self.move_up(x, eindex))
 
-            items[5].observe(
+            items[6].observe(
                 lambda change, eindex=index: self.set_status_use_as_electrode(
                     eindex, change),
                 names='value'
@@ -515,7 +530,7 @@ class electrode_manager(object):
             widgets.HTML('<b>El-Nr (1:)</b>'),
             widgets.HTML('<b>x [m]</b>'),
             widgets.HTML('<b>z [m]</b>'),
-            # widgets.HTML('<b>distance [m]</b>'),
+            widgets.HTML('<b>distance [m]</b>'),
             # widgets.HTML('<b>distance abs [m]</b>'),
             widgets.HTML(' '),
             widgets.HTML(' '),
@@ -523,23 +538,25 @@ class electrode_manager(object):
         ]
 
         self.widgets['gridbox'] = GridBox(
-                children=self.xz_header + flat_items,
-                layout=Layout(
-                    width='100%',
-                    grid_template_columns=' '.join((
-                        # el-nr
-                        '80px',
-                        # x
-                        '60px',
-                        # z
-                        '60px',
-                        '150px',
-                        '150px',
-                        '180px',
-                    )),
-                    grid_template_rows='auto',
-                    grid_gap='5px 10px',
-                 )
+            children=self.xz_header + flat_items,
+            layout=Layout(
+                width='100%',
+                grid_template_columns=' '.join((
+                    # el-nr
+                    '80px',
+                    # x
+                    '60px',
+                    # z
+                    '60px',
+                    # distance
+                    '60px',
+                    '150px',
+                    '150px',
+                    '180px',
+                )),
+                grid_template_rows='auto',
+                grid_gap='5px 10px',
+             )
         )
 
         vbox = widgets.VBox([
@@ -600,6 +617,7 @@ class electrode_manager(object):
         self._update_widgets()
 
     def print_log(self, button):
+        self.widgets['output_log'].clear_output()
         with self.widgets['output_log']:
             print(self.log_handler.get_str_formatting())
 
@@ -638,6 +656,20 @@ class electrode_manager(object):
 
     def _update_widgets(self):
         active_electrode_index = 0
+        actives = np.where(self.electrode_positions[:, 3])[0]
+        positions = self.electrode_positions
+        distances = [0, ]
+        for i in range(1, len(actives)):
+            print(i)
+            distance = np.sqrt(
+                (
+                    positions[actives[i], 0] - positions[actives[i - 1], 0]
+                ) ** 2 +
+                (
+                    positions[actives[i], 2] - positions[actives[i - 1], 2]
+                ) ** 2
+            )
+            distances += [distance]
 
         for index, electrode in enumerate(self.electrode_positions):
             line = self.el_widgets[index]
@@ -646,23 +678,25 @@ class electrode_manager(object):
                 line[0].value = 'Electrode -'
                 line[1].value = '{:.3f}'.format(electrode[0])
                 line[2].value = '{:.3f}'.format(electrode[2])
+                line[3].value = '-'
                 # move down button
-                line[3].disabled = True
-                # move up button
                 line[4].disabled = True
+                # move up button
+                line[5].disabled = True
                 # use-as-electrode checkbox
-                line[5].value = False
+                line[6].value = False
             else:
-                # activate electrode
+                # active electrode
                 line[0].value = 'Electrode {}'.format(active_electrode_index)
                 line[1].value = '{:.3f}'.format(electrode[0])
                 line[2].value = '{:.3f}'.format(electrode[2])
+                line[3].value = '{}'.format(distances[active_electrode_index])
                 # move-down button
-                line[3].disabled = False
-                # move up button
                 line[4].disabled = False
+                # move up button
+                line[5].disabled = False
                 # use-as-electrode checkbox
-                line[5].value = True
+                line[6].value = True
                 active_electrode_index += 1
 
         nr_active_electrodes = np.where(self.electrode_positions[:, 3])[0].size
