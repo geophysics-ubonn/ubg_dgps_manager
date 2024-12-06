@@ -458,14 +458,17 @@ class gui(object):
             'output_utm_points': widgets.Output(),
             'but_reverse_electrodes': widgets.Button(
                 description='Reverse el. order',
+                style={'description_width': 'initial'},
                 disabled=True,
             ),
             'but_sort_dist_to_first': widgets.Button(
                 description='Sort wrt dist. to first',
+                style={'description_width': 'initial'},
                 disabled=True,
             ),
             'but_show_el_manager': widgets.Button(
                 description='Show Electrode Manager',
+                style={'description_width': 'initial'},
                 disabled=True,
             ),
             'help_el_manager': widgets.HTML(
@@ -481,6 +484,7 @@ class gui(object):
             ),
             'but_show_log': widgets.Button(
                 description='Show LOG',
+                style={'description_width': 'initial'},
                 disabled=False,
             ),
             'output_log': widgets.Output(
@@ -488,12 +492,14 @@ class gui(object):
             ),
             'but_show_gps_coordinates': widgets.Button(
                 description='Show GPS Coordinates',
+                style={'description_width': 'initial'},
                 disabled=True,
             ),
             'output_gps_coords': widgets.Output(),
             'output_el_manager': widgets.Output(),
             'but_show_grid_creator': widgets.Button(
                 description='Show Grid Creator',
+                style={'description_width': 'initial'},
                 disabled=True,
             ),
             'help_grid_creator': widgets.HTML(
