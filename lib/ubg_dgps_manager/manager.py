@@ -15,10 +15,12 @@ from cartopy.io.img_tiles import OSM
 import geojson
 from pyproj.database import query_utm_crs_info
 from pyproj.aoi import AreaOfInterest
-
 from pyproj import CRS
-
 from pyproj import Transformer
+
+import markdown
+import importlib_resources
+import pathlib
 
 from IPython.display import display
 
@@ -434,7 +436,17 @@ class gui(object):
         self.gui = None
         self._build_gui()
 
+    def _build_help_widget(self):
+        help_file = importlib_resources.files(
+            'ubg_dgps_manager'
+        ) / pathlib.Path('help_text/help.md')
+        help_md = open(help_file, 'r').read()
+
+        html = markdown.markdown(help_md)
+        self.help_widget = widgets.HTML(html)
+
     def _build_importer_tab(self):
+        self._build_help_widget()
         self.importers = {
             'geojson_zip': importer_geojson_zip(self._add_to_gps_coords),
             'geojson': importer_geojson(self._add_to_gps_coords),
@@ -447,8 +459,9 @@ class gui(object):
         for key, item in self.importers.items():
             children += [item.output]
             titles += [item.label]
-        self.import_tab.children = children
-        self.import_tab.titles = titles
+
+        self.import_tab.children = [self.help_widget] + children
+        self.import_tab.titles = ['Help'] + titles
 
     def _build_gui(self):
         self._build_importer_tab()
