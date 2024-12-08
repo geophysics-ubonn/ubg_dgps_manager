@@ -5,7 +5,7 @@ import glob
 from setuptools import setup
 from setuptools import find_packages
 
-version_long = '0.2.0'
+version_long = '0.3.0'
 
 # package data
 os.chdir('lib/ubg_dgps_manager/')
