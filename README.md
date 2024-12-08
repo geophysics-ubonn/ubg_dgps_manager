@@ -25,3 +25,7 @@ in one cell:
     import ubg_dgps_manager
     mgr = ubg_dgps_manager.gui()
     mgr.show()
+
+## Help
+
+A help text is displayed in the GUI after initialization.
