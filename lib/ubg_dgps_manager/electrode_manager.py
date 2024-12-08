@@ -425,6 +425,11 @@ class electrode_manager(object):
         ]
         return widget_row
 
+    def _add_line_to_log(self, button):
+        self.log.info(
+            'Manual note: ' + self.log_widgets['log_input'].value
+        )
+
     def _build_widgets(self):
         el_widgets = []
 
@@ -526,6 +531,37 @@ class electrode_manager(object):
         self.shift_widgets, shift_gbox = self.get_shift_elcs_widgets()
         self.shift_widgets[4].on_click(self.shift_electrodes)
 
+        self.log_widgets = {
+            'log_input': widgets.Text(
+                value='Hello World',
+                placeholder='Type something',
+                description='Input for log:',
+                disabled=False,
+                style={'description_width': 'initial'},
+                layout=widgets.Layout(
+                    width='100%'
+                )
+            ),
+            'submit': widgets.Button(
+                description='Add line to log',
+                style={'description_width': 'initial'},
+                disabled=False,
+            ),
+        }
+        self.log_widgets['submit'].on_click(self._add_line_to_log)
+        self.log_line_input = GridBox(
+            children=[
+                self.log_widgets['submit'],
+                self.log_widgets['log_input'],
+            ],
+            layout=Layout(
+                width='100%',
+                grid_template_columns='200px auto',
+                grid_template_rows='auto auto',
+                grid_gap='5px 10px'
+             )
+        )
+
         self.xz_header = [
             widgets.HTML('<b>El-Nr (1:)</b>'),
             widgets.HTML('<b>x [m]</b>'),
@@ -569,6 +605,7 @@ class electrode_manager(object):
             self.widgets['button_print'],
             self.widgets['output_print'],
             self.widgets['button_show_log'],
+            self.log_line_input,
             self.widgets['output_log'],
         ])
         self.vbox = vbox
