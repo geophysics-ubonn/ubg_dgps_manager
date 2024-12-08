@@ -463,6 +463,11 @@ class gui(object):
         self.import_tab.children = [self.help_widget] + children
         self.import_tab.titles = ['Help'] + titles
 
+    def _add_line_to_log(self, button):
+        self.log.info(
+            'Manual note: ' + self.log_widgets['log_input'].value
+        )
+
     def _build_gui(self):
         self._build_importer_tab()
         self.widgets = {
@@ -524,8 +529,40 @@ class gui(object):
             'output_grid_creator': widgets.Output(),
         }
 
+        self.log_widgets = {
+            'log_input': widgets.Text(
+                value='Hello World',
+                placeholder='Type something',
+                description='Input for log:',
+                disabled=False,
+                style={'description_width': 'initial'},
+                layout=widgets.Layout(
+                    width='100%'
+                )
+            ),
+            'submit': widgets.Button(
+                description='Add line to log',
+                style={'description_width': 'initial'},
+                disabled=False,
+            ),
+        }
+        self.log_widgets['submit'].on_click(self._add_line_to_log)
+        self.log_line_input = GridBox(
+            children=[
+                self.log_widgets['submit'],
+                self.log_widgets['log_input'],
+            ],
+            layout=Layout(
+                width='100%',
+                grid_template_columns='200px auto',
+                grid_template_rows='auto auto',
+                grid_gap='5px 10px'
+             )
+        )
+
         self.gui = widgets.VBox([
             self.import_tab,
+            self.log_line_input,
             GridBox(
                 children=[
                     self.widgets['output1'],
@@ -785,8 +822,8 @@ class gui(object):
 
         print('Building map-xy-widgets')
         self.point_widgets = []
-        print('nr of utm coords:', self.utm_coords.shape)
-        print(self.utm_coords)
+        # print('nr of utm coords:', self.utm_coords.shape)
+        # print(self.utm_coords)
         for index, point in enumerate(self.utm_coords):
             label_nr = widgets.Label('')
             label_nr_rev = widgets.Label('')
@@ -1135,7 +1172,6 @@ class gui(object):
         for active, position in zip(self.utm_active_indices, self.utm_coords):
             if active:
                 positions.append(position)
-                print(positions)
         return np.vstack(positions)
 
     def _show_electrode_manager(self, button):
