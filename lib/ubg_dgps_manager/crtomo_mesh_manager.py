@@ -67,6 +67,7 @@ class crtomo_mesh_mgr(object):
         self.widgets = {
             'but_gen_mesh': widgets.Button(
                 description='Generate Mesh',
+                style={'description_width': 'initial'},
             ),
             'upper_left_x': widgets.FloatText(
                 value=np.round(
@@ -75,6 +76,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Upper left corner (X):',
+                style={'description_width': 'initial'},
             ),
             'upper_left_z': widgets.FloatText(
                 value=np.round(
@@ -83,6 +85,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Upper left corner (Z):',
+                style={'description_width': 'initial'},
             ),
             'lower_left_x': widgets.FloatText(
                 value=np.round(
@@ -91,6 +94,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Lower left corner (X):',
+                style={'description_width': 'initial'},
             ),
             'lower_left_z': widgets.FloatText(
                 value=np.round(
@@ -99,6 +103,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Lower left corner (Z):',
+                style={'description_width': 'initial'},
             ),
             'upper_right_x': widgets.FloatText(
                 value=np.round(
@@ -107,6 +112,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Upper right corner (X):',
+                style={'description_width': 'initial'},
             ),
             'upper_right_z': widgets.FloatText(
                 value=np.round(
@@ -115,6 +121,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Upper right corner (Z):',
+                style={'description_width': 'initial'},
             ),
             'lower_right_x': widgets.FloatText(
                 value=np.round(
@@ -123,6 +130,7 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Lower right corner (X):',
+                style={'description_width': 'initial'},
             ),
             'lower_right_z': widgets.FloatText(
                 value=np.round(
@@ -131,16 +139,19 @@ class crtomo_mesh_mgr(object):
                 ),
                 step=0.5,
                 description='Lower right corner (Z):',
+                style={'description_width': 'initial'},
             ),
             'char_length_1': widgets.FloatText(
                 value=np.round(self.eldist_min / 3.0, 4),
                 step=0.1,
                 description='Size at electrodes:',
+                style={'description_width': 'initial'},
             ),
             'char_length_2': widgets.FloatText(
                 value=np.round(self.eldist_min, 4),
                 step=0.1,
                 description='Size at boundaries:',
+                style={'description_width': 'initial'},
             ),
         }
         self.widgets['but_gen_mesh'].on_click(self.generate_mesh)
