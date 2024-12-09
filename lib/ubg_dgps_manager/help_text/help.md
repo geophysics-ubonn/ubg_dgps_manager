@@ -50,7 +50,15 @@ here called an analysis cycle.
 			day2_seismic_profile1_processing_2d.txt
 			day2_seismic_profile1.gps
 			day2_seismic_profile1.2d
+		ERT_Mesh/
+			day2_ert_profile1_mesh.zip
 
 ## TODO
 
 * Populate this help text
+* 2D Coordinate export has y=1 cooridnates -> must be 0
+* clear line log inputs after adding to log (gps and 2d managers)
+* can we add functionality to download/copy-all/select-all logs?
+* CRTomo mesh creator:
+	* Better visual feedback while generating mesh
+	* Can we print element count
