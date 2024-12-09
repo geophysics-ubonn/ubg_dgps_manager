@@ -711,6 +711,10 @@ class electrode_manager(object):
 
         for index, electrode in enumerate(self.electrode_positions):
             line = self.el_widgets[index]
+            for subw in line:
+                subw.layout.display = "none"
+                subw.layout.visibility = "visible"
+
             # inactive electrode
             if electrode[3] == 0:
                 line[0].value = 'Electrode -'
@@ -736,6 +740,13 @@ class electrode_manager(object):
                 # use-as-electrode checkbox
                 line[6].value = True
                 active_electrode_index += 1
+
+        nr_widgets = len(self.el_widgets)
+        nr_electrodes = self.electrode_positions.shape[0]
+        if nr_widgets > nr_electrodes:
+            for i in range(nr_electrodes, nr_widgets):
+                for subwidget in self.el_widgets[i]:
+                    subwidget.layout.display = "none"
 
         nr_active_electrodes = np.where(self.electrode_positions[:, 3])[0].size
         self.widgets['int_interp_from'].max = nr_active_electrodes - 1
