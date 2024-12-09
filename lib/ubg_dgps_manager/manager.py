@@ -467,6 +467,7 @@ class gui(object):
         self.log.info(
             'Manual note: ' + self.log_widgets['log_input'].value
         )
+        self.log_widgets['log_input'].value = ''
 
     def _build_gui(self):
         self._build_importer_tab()
