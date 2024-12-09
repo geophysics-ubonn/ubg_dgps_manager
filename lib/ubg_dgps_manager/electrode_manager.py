@@ -58,7 +58,7 @@ def get_resampled_positions(data_x_raw, data_z_raw, requested_spacing):
     )
     max_dist_orig = xy_dist_orig.max()
     N_approx = np.floor(max_dist_orig / requested_spacing)
-    print('N_approx:', N_approx)
+    # print('N_approx:', N_approx)
 
     interp = PchipInterpolator(data_x, data_z)
     # evaluate the spline at 4 times the density of the approximate requested
@@ -76,7 +76,7 @@ def get_resampled_positions(data_x_raw, data_z_raw, requested_spacing):
             )
         )
     )
-    print('xy_dist', xy_dist)
+    # print('xy_dist', xy_dist)
     # this is the
     max_dist = int(
         requested_spacing * (int(xy_dist.max() / requested_spacing)) + 1
@@ -662,11 +662,11 @@ class electrode_manager(object):
     def print_electrode_coordinates(self, button):
         self.widgets['output_print'].clear_output()
         with self.widgets['output_print']:
-            print('#x[m] y[m] z[m]')
+            print('#x[m];y[m];z[m]')
             for position in self.electrode_positions:
                 if position[3] == 1:
                     print(
-                        '{:.6f} {:.6f} {:.6f}'.format(*position[0:3])
+                        '{:.6f};{:.6f};{:.6f}'.format(*position[0:3])
                     )
 
     def _plot_points(self):

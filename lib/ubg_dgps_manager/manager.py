@@ -636,8 +636,8 @@ class gui(object):
         """
         self.widgets['output_gps_coords'].clear_output()
         with self.widgets['output_gps_coords']:
-            print('#WGS84 Coordinates (EPSG:4326)')
-            print('#lat lon height[m]')
+            crs_str = '#WGS84 Coordinates (EPSG:4326)'
+            print('#lat;lon;height[m];crs')
             # print('# UTM Zone: {}'.format(self.utm_zone))
             for active, row in zip(
                     self.utm_active_indices, self.utm_coords):
@@ -646,8 +646,9 @@ class gui(object):
                         row[0], row[1]
                     )
                     print(
-                        '{:.6f} {:.6f} {:.6f}'.format(
-                            *wgs, row[2]
+                        '{:.6f};{:.6f};{:.6f};{}'.format(
+                            *wgs, row[2],
+                            crs_str
                         )
                     )
 

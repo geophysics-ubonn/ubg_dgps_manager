@@ -32,11 +32,11 @@ here called an analysis cycle.
 	  The log file ending in *_gps.txt* holds the log of the 3D point manager,
 	  while the file ending in *_2d.txt* holds the log of the 2D electrode
 	  manager.
-	* Processed gps coordinates go into *.gps* files
-	* Processed 2d coordinates go into .2d file
+	* Processed gps coordinates go into *_gps.csv files
+	* Processed 2d coordinates go into *_2d.csv file
 
 * Resulting directory layout that can then be used for data managing.
-  An example listing, producing one point data set for an ert profile, and one
+  An example listing, producing one point data set for an ERT profile, and one
   for a seismics profile could look like this:
 
 		RawData/
@@ -44,19 +44,22 @@ here called an analysis cycle.
 		ProcessedData/
 			day2_ert_profile1_processing_gps.txt
 			day2_ert_profile1_processing_2d.txt
-			day2_ert_profile1.gps
-			day2_ert_profile1.2d
+			day2_ert_profile1_gps.csv
+			day2_ert_profile1_2d.csv
 			day2_seismic_profile1_processing_gps.txt
 			day2_seismic_profile1_processing_2d.txt
-			day2_seismic_profile1.gps
-			day2_seismic_profile1.2d
+			day2_seismic_profile1_gps.csv
+			day2_seismic_profile1_2d.csv
 		ERT_Mesh/
 			day2_ert_profile1_mesh.zip
 
+.. note::
+
+    _gps.csv files can be directly dragged&dropped into https://umap.openstreetmap.de
 ## TODO
 
 * Populate this help text
-* 2D Coordinate export has y=1 cooridnates -> must be 0
+* 2D Coordinate export has y=1 coordinates -> must be 0
 * clear line log inputs after adding to log (gps and 2d managers)
 * can we add functionality to download/copy-all/select-all logs?
 * CRTomo mesh creator:
