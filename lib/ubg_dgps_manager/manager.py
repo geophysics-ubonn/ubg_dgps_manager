@@ -1238,12 +1238,20 @@ class gui(object):
         xmax = coords[:, 0].max()
         xdiff = xmax - xmin
 
+        if xdiff <= 0:
+            # set x-extent to 20m
+            xdiff = 100
+
         assert xmin > 0
         assert xmax > 0
 
         ymin = coords[:, 1].min()
         ymax = coords[:, 1].max()
         ydiff = ymax - ymin
+
+        if ydiff <= 0:
+            # set y-extent to 20m
+            ydiff = 100
 
         extent = [
             coords[:, 0].min() - xdiff / 2,
