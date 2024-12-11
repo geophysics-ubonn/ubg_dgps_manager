@@ -712,7 +712,7 @@ class electrode_manager(object):
         for index, electrode in enumerate(self.electrode_positions):
             line = self.el_widgets[index]
             for subw in line:
-                subw.layout.display = "none"
+                subw.layout.display = "flex"
                 subw.layout.visibility = "visible"
 
             # inactive electrode
