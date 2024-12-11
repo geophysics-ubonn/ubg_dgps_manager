@@ -56,12 +56,22 @@ here called an analysis cycle.
 .. note::
 
     _gps.csv files can be directly dragged&dropped into https://umap.openstreetmap.de
+
+## Trouble-Shooting
+
+* My geojson zip file will not upload/be processed: When photos are included,
+  the zip files can become large and stop things from working properly. In
+  those cases, unzip the file and process the .geojson files separately.
+
 ## TODO
 
-* Populate this help text
 * 2D Coordinate export has y=1 coordinates -> must be 0
-* clear line log inputs after adding to log (gps and 2d managers)
 * can we add functionality to download/copy-all/select-all logs?
+* GPS manager:
+	*  Having  only one gps point breaks the map
+	*  (important) check electrode inputs for 0- or 1-indexing!
+	* add a column with relative heights
 * CRTomo mesh creator:
 	* Better visual feedback while generating mesh
 	* Can we print element count
+	*
