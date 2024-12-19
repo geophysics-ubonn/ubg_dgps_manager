@@ -282,6 +282,9 @@ class crtomo_mesh_mgr(object):
 
     def generate_mesh(self, button):
         print('Generating mesh')
+        self.widgets[
+            'but_gen_mesh'
+        ].description = 'Generating mesh...please wait'
         tempdir = tempfile.mkdtemp(
             prefix='dgps_manager_tmp_meshdir_'
         )
@@ -391,6 +394,18 @@ class crtomo_mesh_mgr(object):
             zip_blob,
         ]
 
+        # get element count
+        with open(file_list[0], 'r') as fid:
+            # ignore first line
+            fid.readline()
+            _, self.triangle_count, _ = np.fromstring(
+                fid.readline.strip(),
+                sep=' ',
+                dtype=int,
+            )
+        with open(file_list[1], 'r') as fid:
+            self.electrode_count = int(fid.readline().strip)
+
         for file in file_list:
             filename = file
             if os.path.isfile(filename):
@@ -409,6 +424,9 @@ class crtomo_mesh_mgr(object):
                     )
             else:
                 print('TARGET does not exist:', filename)
+        self.widgets[
+            'but_gen_mesh'
+        ].description = 'Generate new mesh'
 
     def plot_mesh(self):
         if self.mesh is None:

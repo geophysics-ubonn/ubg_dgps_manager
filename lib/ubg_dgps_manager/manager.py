@@ -1164,7 +1164,7 @@ class gui(object):
 
     def _show_grid_creator(self, button):
         self.grid_creator = crtomo_mesh_mgr(
-            self.el_manager.get_electrode_positions(),
+            self.el_manager.get_electrode_positions_xz(),
             output=self.widgets['output_grid_creator'],
         )
         self.grid_creator.show()

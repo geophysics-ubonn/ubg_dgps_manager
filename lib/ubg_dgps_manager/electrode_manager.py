@@ -97,6 +97,21 @@ def get_resampled_positions(data_x_raw, data_z_raw, requested_spacing):
 
 class electrode_manager(object):
     def __init__(self, electrode_positions, output=None):
+        """
+
+        Parameters
+        ----------
+        electrode_positions: numpy.ndarray (Nx4)
+            The electrode positions in 2D. Optimally, the x and y
+            coordiantes were projected onto a 2D line before providing them
+            here. The first three columns denote x,y,z coordinates,
+            respectively.  In all cases, the y-column MUST be filled with
+            zeros. The fourth (last) column contains only zeros and ones,
+            indicating active/passive electrodes.
+        output: ipywidgets.widgets.Output (Optional)
+            If provided, output widgets into this output widget.
+
+        """
         self.log = logging.Logger(
             name='electrode_manager',
             level=logging.INFO,
@@ -381,9 +396,9 @@ class electrode_manager(object):
             self.electrode_positions[0:actives[0][start_electrode], :],
             np.vstack((
                 new_x,
-                np.ones_like(new_x),
+                np.zeros_like(new_x),
                 new_z,
-                np.ones_like(new_x),
+                np.zeros_like(new_x),
             )).T,
             self.electrode_positions[actives[0][end_electrode]+1:, :]
         ))
@@ -644,12 +659,12 @@ class electrode_manager(object):
         replace_ids = actives[0][
             el_ids[0] + 1:el_ids[1],
         ]
-        print('replace ids:', replace_ids)
-        print('replace ids.shape:', replace_ids.shape)
+        # print('replace ids:', replace_ids)
+        # print('replace ids.shape:', replace_ids.shape)
         z_new = np.polyval(p, active_els[replace_ids, 0])
-        print('Evaluating at:')
-        print(active_els[1:-1, 0])
-        print('z_new', z_new)
+        # print('Evaluating at:')
+        # print(active_els[1:-1, 0])
+        # print('z_new', z_new)
         self.electrode_positions[replace_ids, 2] = z_new
 
         self._update_widgets()
@@ -693,6 +708,11 @@ class electrode_manager(object):
             display(fig)
 
     def _update_widgets(self):
+        # clear the LOG and coordinate widgets when updating widgets
+        self.widgets['output_log'].clear_output()
+        self.widgets['output_print'].clear_output()
+
+        # update the widgets
         active_electrode_index = 0
         actives = np.where(self.electrode_positions[:, 3])[0]
         positions = self.electrode_positions
@@ -805,7 +825,8 @@ class electrode_manager(object):
         else:
             display(self.vbox)
 
-    def get_electrode_positions(self):
+    def get_electrode_positions_xz(self):
+        # select only active electrodes
         indices = np.where(self.electrode_positions[:, 3])
         return np.vstack((
             self.electrode_positions[indices, 0],
