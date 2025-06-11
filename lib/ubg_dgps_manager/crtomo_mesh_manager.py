@@ -399,12 +399,21 @@ class crtomo_mesh_mgr(object):
             # ignore first line
             fid.readline()
             _, self.triangle_count, _ = np.fromstring(
-                fid.readline.strip(),
+                fid.readline().strip(),
                 sep=' ',
                 dtype=int,
             )
+            with self.output_links:
+                print('The resulting mesh has {} triangles.\n'.format(
+                    self.triangle_count
+                ))
+
         with open(file_list[1], 'r') as fid:
-            self.electrode_count = int(fid.readline().strip)
+            self.electrode_count = int(fid.readline().strip())
+            with self.output_links:
+                print('The resulting mesh has {} electrodes.\n'.format(
+                    self.electrode_count
+                ))
 
         for file in file_list:
             filename = file
