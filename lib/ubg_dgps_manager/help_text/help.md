@@ -3,6 +3,9 @@
 ## Components of the dGPS Manager
 
 * **Importer and 3D point manager**
+  * Make sure to use the "No figure updates" check box when
+	activating/deactivating lots of points. Otherwise, each change will trigger
+	a complete recreation of the figures
 * **Electrode Manager** (2D point manager): Manage 2D point locations derived from
   the 3D data points.
   Basically, x and z coordinates are used.
@@ -65,6 +68,8 @@ here called an analysis cycle.
 
 ## TODO
 
+* It would be really nice to be able to save/restore the various manager states
+  (coordinate manager, electrode manager, mesh manager)
 * 2D Coordinate export has y=1 coordinates -> must be 0
 * can we add functionality to download/copy-all/select-all logs?
 * GPS manager:
