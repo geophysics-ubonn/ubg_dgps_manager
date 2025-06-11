@@ -405,6 +405,10 @@ class gui(object):
         self.log.addHandler(self.log_handler)
         self.log.info("Remember: Electrode indices start at 0!")
 
+        # at what distance do we identify points as duplicates?
+        # [m]
+        self.duplicate_distance = 0.15
+
         self.widgets = {}
         self.filename = filename
         if filename is not None:
@@ -485,10 +489,30 @@ class gui(object):
                 style={'description_width': 'initial'},
                 disabled=True,
             ),
+            'but_disable_duplicates': widgets.Button(
+                description='Remove duplicates',
+                style={'description_width': 'initial'},
+                disabled=True,
+            ),
             'but_show_el_manager': widgets.Button(
                 description='Show Electrode Manager',
                 style={'description_width': 'initial'},
                 disabled=True,
+            ),
+            'check_no_map_update': widgets.Checkbox(
+                value=False,
+                description=''.join((
+                    'No figure updates (faster - use for deactivating',
+                    ' lots of electrodes)',
+                )),
+                disabled=False,
+                indent=False,
+                style={'description_width': 'initial'},
+            ),
+            'but_update_map': widgets.Button(
+                description='Update the figures once',
+                style={'description_width': 'initial'},
+                disabled=False,
             ),
             'help_el_manager': widgets.HTML(
                 value=''.join((
@@ -501,6 +525,7 @@ class gui(object):
                 # placeholder='Some HTML',
                 # description='Some HTML',
             ),
+
             'but_show_log': widgets.Button(
                 description='Show LOG',
                 style={'description_width': 'initial'},
@@ -584,8 +609,11 @@ class gui(object):
             widgets.HBox([
                 self.widgets['but_reverse_electrodes'],
                 self.widgets['but_sort_dist_to_first'],
+                # self.widgets['but_disable_duplicates'],
             ]),
             self.widgets['but_show_log'],
+            self.widgets['check_no_map_update'],
+            self.widgets['but_update_map'],
             self.widgets['output_log'],
             self.widgets['but_show_gps_coordinates'],
             self.widgets['output_gps_coords'],
@@ -596,6 +624,14 @@ class gui(object):
             self.widgets['help_grid_creator'],
             self.widgets['output_grid_creator'],
         ])
+
+        self.widgets['but_update_map'].on_click(
+            self._update_figures
+        )
+
+        self.widgets['but_disable_duplicates'].on_click(
+            self.disable_duplicates
+        )
 
         self.widgets['but_show_gps_coordinates'].on_click(
             self.print_gps_coordinates
@@ -984,7 +1020,10 @@ class gui(object):
         # )
         # thread.start()
         # for now, call it syncronously
-        self._async_plot_map_topography(self.widgets['output2'])
+
+        update_map = not self.widgets['check_no_map_update'].value
+        if update_map:
+            self._async_plot_map_topography(self.widgets['output2'])
 
         # show table with utm-datapoints
 
@@ -1006,7 +1045,7 @@ class gui(object):
                 el_label = '{}'.format(el_nr)
                 el_label_rev = '{}'.format(nr_active_electrodes - el_nr + 1)
 
-                # shortcuts
+                # shortcuts to long-name variables
                 dist_rel = self.utm_active_distances_rel
                 dist_first = self.utm_active_distances_to_first
                 # relative distance
@@ -1014,7 +1053,10 @@ class gui(object):
                     dist_rel[el_nr - 1],
                 )
 
-                if index > 0 and dist_rel[el_nr - 1] <= 0.15:
+                # set color of label according to the distance to the previous
+                # electrode
+                if index > 0 and \
+                        dist_rel[el_nr - 1] <= self.duplicate_distance:
                     items[5].style.background = 'red'
                 elif index > 0 and dist_rel[
                         el_nr - 1] <= mean_electrode_distance / 3:
@@ -1110,6 +1152,10 @@ class gui(object):
         # print(self.utm_coords)
         self._update_map_xy_widgets()
 
+    def disable_duplicates(self, button):
+        """Remove all electrodes with a distance to the next"""
+        pass
+
     def enable_all_before(self, eindex, button):
         self.log.info(
             'Enabling all electrodes before index: {}'.format(
@@ -1151,7 +1197,12 @@ class gui(object):
             self.utm_active_indices[i] = 0
         self._update_map_xy_widgets()
 
+    def _update_figures(self, button):
+        self._update_map_xy_widgets()
+
     def set_status_use_as_electrode(self, index, change):
+        """
+        """
         # print('xy widgets: set as active electrode')
         self.log.info(
             'Changing status of electrode {} to {}'.format(
@@ -1160,7 +1211,9 @@ class gui(object):
         )
         self._clear_advanced_steps()
         self.utm_active_indices[index] = int(change['new'])
-        self._update_map_xy_widgets()
+        update_map = not self.widgets['check_no_map_update'].value
+        if update_map:
+            self._update_map_xy_widgets()
 
     def _show_grid_creator(self, button):
         self.grid_creator = crtomo_mesh_mgr(
@@ -1306,6 +1359,13 @@ class gui(object):
         return fig, ax
 
     def plot_utm_topography(self, relative=False):
+        """
+
+        Parameters
+        ----------
+        relative: bool, default: False
+            ?
+        """
         coords = self.utm_coords.copy()
         # only use active electrodes
         coords = coords[np.where(self.utm_active_indices)[0], :]
@@ -1313,11 +1373,12 @@ class gui(object):
         if relative:
             for i in range(3):
                 coords[:, i] -= coords[:, i].min()
+
         xy_distances = self.xy_distances_rel[
-                np.where(self.utm_active_indices)[0]
+            np.where(self.utm_active_indices)[0]
         ]
 
-        fig, axes = plt.subplots(1, 2)
+        fig, axes = plt.subplots(2, 1, figsize=(12 / 2.54, 18 / 2.54), dpi=200)
         ax = axes[0]
         ax.plot(
             np.cumsum(xy_distances),
@@ -1328,18 +1389,34 @@ class gui(object):
         ax.set_xlabel('distance [m]')
         ax.set_ylabel('height [m]')
         if relative:
-            ax.set_title('Relative heights', loc='left', fontsize=7)
-        ax.set_title('Topography', loc='right')
+            ax.set_title(
+                'Relative heights',
+                loc='left',
+                fontsize=7,
+            )
+        ax.set_title(
+            'Topography',
+            loc='right',
+            fontsize=7,
+        )
 
         ax = axes[1]
+        # print('Plotting figures')
+        # print('xy_distances_rel', self.xy_distances_rel)
+        # print('xy_distances', xy_distances)
         ax.plot(
-            range(1, xy_distances.size),
-            xy_distances[1:],
+            range(1, self.utm_active_distances_rel.size),
+            self.utm_active_distances_rel[1:],
             '.-',
+        )
+        ax.set_title(
+            'Distance to previous electrode',
+            loc='left',
+            fontsize=8,
         )
         ax.grid()
         ax.set_ylabel('Distances to prev. el. [m]')
-        ax.set_xlabel('Electrode Nr')
+        ax.set_xlabel('active electrode nr')
         return fig, ax
 
 
