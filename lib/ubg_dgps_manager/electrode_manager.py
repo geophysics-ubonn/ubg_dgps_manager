@@ -134,6 +134,10 @@ class electrode_manager(object):
 
         self.widgets = {}
 
+        # output figure of the topography/electrode points
+        self.fig = None
+        self.ax = None
+
         # we render the whole manager in here
         self.output = output
 
@@ -601,7 +605,7 @@ class electrode_manager(object):
                     # z
                     '60px',
                     # distance
-                    '60px',
+                    '80px',
                     '150px',
                     '150px',
                     '180px',
@@ -687,25 +691,31 @@ class electrode_manager(object):
     def _plot_points(self):
         self.widgets['output_points'].clear_output()
 
+        if self.fig is not None:
+            self.ax.clear()
+        else:
+            fig, ax = plt.subplots(figsize=(22 / 2.54, 10 / 2.54))
+            self.fig = fig
+            self.ax = ax
+
         with plt.ioff():
-            fig, ax = plt.subplots(figsize=(18 / 2.54, 10 / 2.54))
             for position in self.electrode_positions:
                 if position[3] == 1:
-                    ax.scatter(
+                    self.ax.scatter(
                         position[0],
                         position[2],
                         s=50,
                         color='k',
                     )
-            ax.set_xlabel('x [m]')
-            ax.set_ylabel('z [m]')
-            ax.set_title(
+            self.ax.set_xlabel('x [m]')
+            self.ax.set_ylabel('z [m]')
+            self.ax.set_title(
                 'Mesh topography (z-axis relative to lowest electrode)'
             )
-            ax.grid(color='k')
+            self.ax.grid(color='k')
 
         with self.widgets['output_points']:
-            display(fig)
+            display(self.fig)
 
     def _update_widgets(self):
         # clear the LOG and coordinate widgets when updating widgets
