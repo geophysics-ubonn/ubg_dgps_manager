@@ -81,14 +81,14 @@ def get_resampled_positions(data_x_raw, data_z_raw, requested_spacing):
     max_dist = int(
         requested_spacing * (int(xy_dist.max() / requested_spacing)) + 1
     )
-    print('max_dist', max_dist)
+    # print('max_dist', max_dist)
 
     # compute x values
     s_reg = np.linspace(0, max_dist, int(max_dist / requested_spacing + 1))
-    print('s_reg', s_reg)
+    # print('s_reg', s_reg)
 
     x_reg = np.interp(s_reg, xy_dist, x_val)
-    print('x_reg', x_reg)
+    # print('x_reg', x_reg)
 
     y_reg = interp(x_reg)
 
@@ -110,7 +110,6 @@ class electrode_manager(object):
             indicating active/passive electrodes.
         output: ipywidgets.widgets.Output (Optional)
             If provided, output widgets into this output widget.
-
         """
         self.log = logging.Logger(
             name='electrode_manager',
@@ -632,7 +631,7 @@ class electrode_manager(object):
         self._update_widgets()
 
     def interpolate_between_points(self, button):
-        print('Interpolating between electrodes')
+        # print('Interpolating between electrodes')
         el_ids = np.sort([
             self.widgets['int_interp_from'].value,
             self.widgets['int_interp_to'].value,
@@ -642,23 +641,20 @@ class electrode_manager(object):
                 *el_ids
             )
         )
-        print('Electrode ids:', el_ids)
         if el_ids[1] - el_ids[0] < 2:
-            print('Returning')
+            # print('Returning')
             return
 
         actives = np.where(self.electrode_positions[:, 3])
-        print(actives)
         active_els = self.electrode_positions[actives, 0:3].squeeze()
-        print('active_els:')
-        print(active_els.shape, active_els)
+        # print('active_els:')
+        # print(active_els.shape, active_els)
 
         p = np.polyfit(
             [active_els[el_ids[0], 0], active_els[el_ids[1], 0]],
             [active_els[el_ids[0], 2], active_els[el_ids[1], 2]],
             deg=1,
         )
-        print('p', p)
 
         replace_ids = actives[0][
             el_ids[0] + 1:el_ids[1],
@@ -678,15 +674,18 @@ class electrode_manager(object):
         with self.widgets['output_log']:
             print(self.log_handler.get_str_formatting())
 
+    def _get_elec_coords_str(self):
+        coords = '#x[m];y[m];z[m]\n'
+        for position in self.electrode_positions:
+            if position[3] == 1:
+                coords += '{:.6f};{:.6f};{:.6f}\n'.format(*position[0:3])
+
+        return coords
+
     def print_electrode_coordinates(self, button):
         self.widgets['output_print'].clear_output()
         with self.widgets['output_print']:
-            print('#x[m];y[m];z[m]')
-            for position in self.electrode_positions:
-                if position[3] == 1:
-                    print(
-                        '{:.6f};{:.6f};{:.6f}'.format(*position[0:3])
-                    )
+            print(self._get_elec_coords_str())
 
     def _plot_points(self):
         self.widgets['output_points'].clear_output()
@@ -728,7 +727,6 @@ class electrode_manager(object):
         positions = self.electrode_positions
         distances = [0, ]
         for i in range(1, len(actives)):
-            print(i)
             distance = np.sqrt(
                 (
                     positions[actives[i], 0] - positions[actives[i - 1], 0]
@@ -836,6 +834,8 @@ class electrode_manager(object):
             display(self.vbox)
 
     def get_electrode_positions_xz(self):
+        """Return x/z coordinates of active electrodes
+        """
         # select only active electrodes
         indices = np.where(self.electrode_positions[:, 3])
         return np.vstack((

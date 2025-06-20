@@ -17,8 +17,23 @@ import matplotlib.pyplot as plt
 
 
 class crtomo_mesh_mgr(object):
-    def __init__(self, electrode_positions, output=None):
+    def __init__(self, electrode_positions, local_tmp,
+                 dgps_manager_instance, output=None):
+        """
+        Parameters
+        ----------
+        electrode_positions: numpy.ndarray (Nx2)
+            The electrode positions in 2D.
+        local_tmp: str (optional, default: None)
+            Certain actions require temporary directories accessible from the
+            jupyter interface.
+        output: ipywidgets.widgets.Output (Optional)
+            If provided, output widgets into this output widget.
+
+        """
         self.electrode_positions = electrode_positions
+        self.local_tmp = local_tmp
+        self.dgps_manager_instance = dgps_manager_instance
 
         # compute a few parameters
         self.distance_x = np.abs(
@@ -285,6 +300,8 @@ class crtomo_mesh_mgr(object):
         self.widgets[
             'but_gen_mesh'
         ].description = 'Generating mesh...please wait'
+
+        # here we create the mesh
         tempdir = tempfile.mkdtemp(
             prefix='dgps_manager_tmp_meshdir_'
         )
@@ -295,6 +312,8 @@ class crtomo_mesh_mgr(object):
             self.electrode_positions, fmt='%.4f %.4f'
         )
 
+        # generate simple boundaries with Neumann (type 12) boundaries at the
+        # top and mixed-boundaries (type 11) at the remaining three sides
         with open(tempdir + os.sep + 'boundaries.dat', 'w') as fid:
             fid.write('{:.4f} {:.4f} {}\n'.format(
                 self.widgets['upper_left_x'].value,
@@ -338,7 +357,7 @@ class crtomo_mesh_mgr(object):
             ))
 
         pwd = os.getcwd()
-        print(pwd)
+        print('PWD1', pwd)
         os.chdir(tempdir)
         try:
             subprocess.call('cr_trig_create grid', shell=True)
@@ -366,7 +385,15 @@ class crtomo_mesh_mgr(object):
 
         self.output_links.clear_output()
 
-        tmp_dir_2 = tempfile.mkdtemp(prefix='dpgs_manager_dl_', dir=pwd)
+        # juypter does not allow us to directly link to the temporary directory
+        # (most probably somewhere in /tmp)
+        # We therefore create a new tmp directory in an accessible location
+        # We call this the 'local_tmp' directory
+
+        tmp_dir_2 = tempfile.mkdtemp(
+            prefix='dgps_manager_dl_',
+            dir=self.local_tmp
+        )
         with self.output_links:
             display(
                 widgets.HTML(
@@ -384,7 +411,7 @@ class crtomo_mesh_mgr(object):
             )
 
         # save the zip blob
-        zip_blob = tmp_dir_2 + os.sep + '/cr_trig_create_directory.zip'
+        zip_blob = tmp_dir_2 + os.sep + 'cr_trig_create_directory.zip'
         with open(zip_blob, 'wb') as fid:
             fid.write(buffer.read())
 
@@ -393,6 +420,35 @@ class crtomo_mesh_mgr(object):
             tempdir + os.sep + 'grid' + os.sep + 'elec.dat',
             zip_blob,
         ]
+
+        # save logs/coordinates
+        filename = tmp_dir_2 + os.sep + 'gps_processing_log.log'
+        with open(filename, 'w') as fid:
+            fid.write(self.dgps_manager_instance._get_activity_log_as_str())
+        file_list += [filename]
+
+        filename = tmp_dir_2 + os.sep + 'gps_coordinates.dat'
+        with open(filename, 'w') as fid:
+            fid.write(
+                self.dgps_manager_instance.get_active_gps_coordinates_as_str()
+            )
+        file_list += [filename]
+
+        filename = tmp_dir_2 + os.sep + 'electrode_processing.log'
+        with open(filename, 'w') as fid:
+            el_manager = self.dgps_manager_instance.el_manager
+            fid.write(
+                el_manager.log_handler.get_str_formatting()
+            )
+        file_list += [filename]
+
+        filename = tmp_dir_2 + os.sep + 'electrode_coords.dat'
+        with open(filename, 'w') as fid:
+            el_manager = self.dgps_manager_instance.el_manager
+            fid.write(
+                el_manager._get_elec_coords_str()
+            )
+        file_list += [filename]
 
         # get element count
         with open(file_list[0], 'r') as fid:
@@ -433,6 +489,17 @@ class crtomo_mesh_mgr(object):
                     )
             else:
                 print('TARGET does not exist:', filename)
+
+        with self.output_links:
+            display(
+                widgets.HTML(
+                    ''.join((
+                        '<h3>Make sure to also save the logs/coordinates ' +
+                        'along the electrical raw data, and add required ' +
+                        'information to the metadata.ini file(s)!</h3>'
+                    ))
+                )
+            )
         self.widgets[
             'but_gen_mesh'
         ].description = 'Generate new mesh'

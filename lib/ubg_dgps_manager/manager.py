@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import logging
 import io
 import zipfile
@@ -396,7 +397,16 @@ class importer_geojson_zip(object):
 
 
 class gui(object):
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, local_tmp=None):
+        """
+        Parameters
+        ----------
+        local_tmp: None|str (optional, default: None)
+            Certain actions require temporary directories accessible from the
+            jupyter interface. Such a directory can be provided here. Otherwise
+            PWD is used
+
+        """
         self.log = logging.Logger(
             name='dgps_import',
             level=logging.INFO,
@@ -405,17 +415,22 @@ class gui(object):
         self.log.addHandler(self.log_handler)
         self.log.info("Remember: Electrode indices start at 0!")
 
+        if local_tmp is None:
+            self.local_tmp = os.getcwd()
+        else:
+            self.local_tmp = local_tmp
+
         # at what distance do we identify points as duplicates?
         # [m]
         self.duplicate_distance = 0.15
 
         self.widgets = {}
-        self.filename = filename
-        if filename is not None:
-            print('loading .zip file')
-            self.zfile = zipfile.ZipFile(filename)
-        else:
-            self.zfile = None
+        # self.filename = filename
+        # if filename is not None:
+        #     print('loading .zip file')
+        #     self.zfile = zipfile.ZipFile(filename)
+        # else:
+        #     self.zfile = None
 
         # this holds the filename to the geojson file
         self.file_gj = None
@@ -659,34 +674,46 @@ class gui(object):
 
         return list(sorted(logs_str_unsorted))
 
+    def _get_activity_log_as_str(self):
+        activity_log = '\n'.join(self.get_activity_log_strlist())
+        return activity_log
+
     def print_log_to_widget(self, button):
         """Print the activity log into the corresponding output widget
         """
-        activity_log = '\n'.join(self.get_activity_log_strlist())
+        activity_log = self._get_activity_log_as_str()
         self.widgets['output_log'].clear_output()
         with self.widgets['output_log']:
             print(activity_log)
+
+    def get_active_gps_coordinates_as_str(self):
+        gps_coords = ''
+        crs_str = 'WGS84 Coordinates (EPSG:4326)'
+        gps_coords += '#lat;lon;height[m];crs;utm_zone;utm_x;utm_y\n'
+        # print('# UTM Zone: {}'.format(self.utm_zone))
+        for active, row in zip(self.utm_active_indices, self.utm_coords):
+            if active:
+                wgs = self.transformer_utm_to_wgs.transform(
+                    row[0], row[1]
+                )
+                line = '{:.6f};{:.6f};{:.6f};{};{};{:.6f},{:6f}\n'.format(
+                        *wgs, row[2],
+                        crs_str,
+                        self.utm_zone,
+                        row[0],
+                        row[1],
+                )
+                gps_coords += line
+        return gps_coords
 
     def print_gps_coordinates(self, button):
         """Print WGS84 Coordinates of the final points
         """
         self.widgets['output_gps_coords'].clear_output()
+        active_utm_coords = self.get_active_gps_coordinates_as_str()
+
         with self.widgets['output_gps_coords']:
-            crs_str = '#WGS84 Coordinates (EPSG:4326)'
-            print('#lat;lon;height[m];crs')
-            # print('# UTM Zone: {}'.format(self.utm_zone))
-            for active, row in zip(
-                    self.utm_active_indices, self.utm_coords):
-                if active:
-                    wgs = self.transformer_utm_to_wgs.transform(
-                        row[0], row[1]
-                    )
-                    print(
-                        '{:.6f};{:.6f};{:.6f};{}'.format(
-                            *wgs, row[2],
-                            crs_str
-                        )
-                    )
+            print(active_utm_coords)
 
     def _prepare_utm_transformer(self):
 
@@ -878,7 +905,10 @@ class gui(object):
                 indent=False
             )
 
-            button1 = widgets.Button(description='ignore all before')
+            button1 = widgets.Button(
+                description='ignore all before',
+                style={'description_width': 'initial'},
+            )
             button1.on_click(
                 lambda button, eindex=index: self.ignore_all_before(
                     eindex, button
@@ -975,13 +1005,13 @@ class gui(object):
                     # checkbox use el
                     '130px',
                     # button: ignore all before
-                    '110px',
+                    '130px',
                     # button: ignore all after
-                    '110px',
+                    '130px',
                     # button: enable all before
-                    '110px',
+                    '130px',
                     # button: enable all after
-                    '110px',
+                    '130px',
                 )),
                 # grid_template_rows='80px auto 80px',
                 # grid_gap='5px 10px'
@@ -997,7 +1027,15 @@ class gui(object):
                 fig, ax = self.plot_utm_topography(relative=True)
             display(fig)
 
-    def _update_map_xy_widgets(self):
+    def _update_map_xy_widgets(self, force_figure_updates=False):
+        """
+        Parameters
+        ----------
+        force_utm_conversion: bool, default: False
+            Usually we only update the figures (which is a time consuming
+            process) when the checkbox check_no_map_update is NOT checked.
+            However, sometimes we want to force updating figures....
+        """
         self._recompute_utm_distances()
 
         # update the GUI
@@ -1022,7 +1060,7 @@ class gui(object):
         # for now, call it syncronously
 
         update_map = not self.widgets['check_no_map_update'].value
-        if update_map:
+        if force_figure_updates or update_map:
             self._async_plot_map_topography(self.widgets['output2'])
 
         # show table with utm-datapoints
@@ -1198,6 +1236,7 @@ class gui(object):
         self._update_map_xy_widgets()
 
     def _update_figures(self, button):
+        print('Update figures')
         self._update_map_xy_widgets()
 
     def set_status_use_as_electrode(self, index, change):
@@ -1218,6 +1257,8 @@ class gui(object):
     def _show_grid_creator(self, button):
         self.grid_creator = crtomo_mesh_mgr(
             self.el_manager.get_electrode_positions_xz(),
+            local_tmp=self.local_tmp,
+            dgps_manager_instance=self,
             output=self.widgets['output_grid_creator'],
         )
         self.grid_creator.show()
@@ -1238,11 +1279,11 @@ class gui(object):
             )
         ))
 
-        print(xy_distances_to_first.shape)
-        print(np.zeros(self.utm_coords.shape[0]).shape)
-        print(
-            (self.utm_coords[:, 2] - self.utm_coords[:, 2].min()).shape
-        )
+        # print(xy_distances_to_first.shape)
+        # print(np.zeros(self.utm_coords.shape[0]).shape)
+        # print(
+        #     (self.utm_coords[:, 2] - self.utm_coords[:, 2].min()).shape
+        # )
 
         electrode_positions = np.vstack((
             # np.cumsum(self.xy_distances_rel),
