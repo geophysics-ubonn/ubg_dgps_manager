@@ -696,8 +696,9 @@ class gui(object):
                 wgs = self.transformer_utm_to_wgs.transform(
                     row[0], row[1]
                 )
-                line = '{:.6f};{:.6f};{:.6f};{};{};{:.6f},{:6f}\n'.format(
-                        *wgs, row[2],
+                line = '{:.6f};{:.6f};{:.6f};{};{};{:.6f};{:6f}\n'.format(
+                        *wgs,
+                        row[2],
                         crs_str,
                         self.utm_zone,
                         row[0],
