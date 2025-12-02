@@ -811,7 +811,7 @@ class gui(object):
                     self.utm_active_indices,
                     np.ones(N_required - N_existing),
                 ))
-                print(self.utm_active_indices.shape)
+                # print(self.utm_active_indices.shape)
         else:
             # by default, activate all electrodes
             self.utm_active_indices = np.ones(self.utm_coords.shape[0])
