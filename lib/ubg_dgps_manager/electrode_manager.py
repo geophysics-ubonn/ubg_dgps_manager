@@ -478,6 +478,9 @@ class electrode_manager(object):
             description='Print Electrode Coordinates',
             style={'description_width': 'initial'},
             disabled=False,
+            layout=widgets.Layout(
+                width='max-content'
+            )
         )
         self.widgets['output_print'] = widgets.Output()
         self.widgets['button_print'].on_click(

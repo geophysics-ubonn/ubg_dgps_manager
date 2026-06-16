@@ -537,6 +537,9 @@ class gui(object):
                 description='Show Electrode Manager',
                 style={'description_width': 'initial'},
                 disabled=True,
+                layout=widgets.Layout(
+                    width='max-content'
+                )
             ),
             'check_no_map_update': widgets.Checkbox(
                 value=False,
@@ -546,12 +549,22 @@ class gui(object):
                 )),
                 disabled=False,
                 indent=False,
-                style={'description_width': 'initial'},
+                style={
+                    # 'width': 'initial',
+                    'width': '50%',
+                    'description_width': 'initial'
+                },
+                layout=widgets.Layout(
+                    width='max-content'
+                )
             ),
             'but_update_map': widgets.Button(
                 description='Update the figures once',
                 style={'description_width': 'initial'},
                 disabled=False,
+                layout=widgets.Layout(
+                    width='max-content'
+                )
             ),
             'help_el_manager': widgets.HTML(
                 value=''.join((
@@ -577,6 +590,9 @@ class gui(object):
                 description='Show GPS Coordinates',
                 style={'description_width': 'initial'},
                 disabled=True,
+                layout=widgets.Layout(
+                    width='max-content'
+                )
             ),
             'output_gps_coords': widgets.Output(),
             'output_el_manager': widgets.Output(),
@@ -596,7 +612,7 @@ class gui(object):
 
         self.log_widgets = {
             'log_input': widgets.Text(
-                value='Hello World',
+                value='Enter useful information here to place them in the log',
                 placeholder='Type something',
                 description='Input for log:',
                 disabled=False,
@@ -662,7 +678,12 @@ class gui(object):
             self.widgets['but_show_grid_creator'],
             self.widgets['help_grid_creator'],
             self.widgets['output_grid_creator'],
-        ])
+        ],
+            style={"width": "100%"},
+            layout=Layout(
+                width='100%',
+            ),
+        )
 
         self.widgets['but_update_map'].on_click(
             self._update_figures
