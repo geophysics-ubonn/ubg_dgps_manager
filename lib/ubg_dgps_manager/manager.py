@@ -249,7 +249,7 @@ class importer_geojson(object):
 class importer_geojson_zip(object):
     """Provides means to import a geojson file from a .zip file
     """
-    def __init__(self, callback_upload=None):
+    def __init__(self, callback_upload=None, preload_zip_file=None):
         self.log = logging.Logger(
             name='importer_geojson_zip',
             level=logging.INFO,
@@ -274,6 +274,24 @@ class importer_geojson_zip(object):
         # 1) the newly imported data
         # 2) a bool value that indicates if all previous data should be deleted
         self.callback_upload = callback_upload
+
+        if preload_zip_file is not None:
+            self.log.info("Pre-loading zip file")
+
+            buffer = io.BytesIO(
+                open(preload_zip_file, 'rb').read()
+            )
+            # to to end of buffer
+            buffer.seek(0, 2)
+            self.zinfo = {
+                'name': preload_zip_file,
+                'size': buffer.tell(),
+            }
+            buffer.seek(0)
+            self.zfile = zipfile.ZipFile(
+                buffer
+            )
+            self._update_gui()
 
     def _build_gui(self):
         self.widgets = {
@@ -353,6 +371,9 @@ class importer_geojson_zip(object):
                 self.widgets['but_load_gjfile'].disabled = False
 
     def process_upload(self, button):
+        """Load a file from the already uploaded zip file
+
+        """
         # extract file into a buffer
         finfo = self.gjfiles[self.widgets['gj_selector'].value]
 
@@ -397,7 +418,7 @@ class importer_geojson_zip(object):
 
 
 class gui(object):
-    def __init__(self, filename=None, local_tmp=None):
+    def __init__(self, preload_zip_gj_filename=None, local_tmp=None):
         """
         Parameters
         ----------
@@ -425,12 +446,8 @@ class gui(object):
         self.duplicate_distance = 0.15
 
         self.widgets = {}
-        # self.filename = filename
-        # if filename is not None:
-        #     print('loading .zip file')
-        #     self.zfile = zipfile.ZipFile(filename)
-        # else:
-        #     self.zfile = None
+
+        self.preload_zip_gj_filename = preload_zip_gj_filename
 
         # this holds the filename to the geojson file
         self.file_gj = None
@@ -467,7 +484,10 @@ class gui(object):
     def _build_importer_tab(self):
         self._build_help_widget()
         self.importers = {
-            'geojson_zip': importer_geojson_zip(self._add_to_gps_coords),
+            'geojson_zip': importer_geojson_zip(
+                self._add_to_gps_coords,
+                self.preload_zip_gj_filename,
+            ),
             'geojson': importer_geojson(self._add_to_gps_coords),
             'leica': importer_leica_csv(self._add_to_gps_coords),
         }
@@ -481,6 +501,10 @@ class gui(object):
 
         self.import_tab.children = [self.help_widget] + children
         self.import_tab.titles = ['Help'] + titles
+
+        # special case if we preload a .zip file
+        if self.preload_zip_gj_filename is not None:
+            self.import_tab.selected_index = 1
 
     def _add_line_to_log(self, button):
         self.log.info(
