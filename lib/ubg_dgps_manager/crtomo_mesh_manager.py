@@ -10,6 +10,8 @@ import crtomo
 
 import numpy as np
 import ipywidgets as widgets
+from ipywidgets import Layout
+
 from IPython.display import display
 import shapely
 import shapely.plotting
@@ -214,7 +216,10 @@ class crtomo_mesh_mgr(object):
                             self.widgets['char_length_2'],
                         ]),
                         self.widgets['but_gen_mesh'],
-                    ]
+                    ],
+                    layout=Layout(
+                        width='50%',
+                    ),
                 ),
                 self.output_geometry,
             ]),
