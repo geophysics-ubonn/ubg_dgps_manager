@@ -302,6 +302,7 @@ class importer_geojson_zip(object):
             'gj_selector': widgets.RadioButtons(
                 description='Which .geojson file to load from .ZIP:',
                 disabled=False,
+                layout=Layout(width='100%'),
             ),
             'but_load_gjfile': widgets.Button(
                 description='Load .geojson file',
